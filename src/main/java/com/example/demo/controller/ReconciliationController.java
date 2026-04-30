@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 
 import com.example.demo.model.BankTransaction;
+import com.example.demo.model.Order;
 import com.example.demo.service.ReconciliationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +28,12 @@ public class ReconciliationController {
         return ResponseEntity.ok("Successfully processed payment. Order ID: " + orderId);
 
 
+    }
+
+    @GetMapping("/order/{id}")
+    public ResponseEntity<Order> getOrder(@PathVariable Long id){
+        Order order = reconciliationService.getOrderDetails(id);
+        return ResponseEntity.ok(order);
     }
 
 }

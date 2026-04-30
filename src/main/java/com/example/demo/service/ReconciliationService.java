@@ -22,7 +22,9 @@ public class ReconciliationService {
         this.financialValidator = financialValidator;
     }
 
-
+    public Order getOrderDetails(long orderId) {
+        return orderRepository.findById(orderId).orElseThrow(() ->new IllegalArgumentException("Error: Order with id " + orderId + " not found"));
+    }
 
     // Walidator płatności za zamówienie
     public void validateOrderForPayment(Order order){
