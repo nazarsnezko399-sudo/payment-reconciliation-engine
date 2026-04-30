@@ -5,6 +5,7 @@ import com.example.demo.model.Order;
 import com.example.demo.model.OrderStatus;
 import com.example.demo.repository.BankTransactionRepository;
 import com.example.demo.repository.OrderRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -23,7 +24,7 @@ public class ReconciliationService {
 
 
 
-    // Walidator zamówien
+    // Walidator płatności za zamówienie
     public void validateOrderForPayment(Order order){
         if (order == null){ // ten if jest opcjonalny ma za funkcje tylko dodatkowego zabezpieczenia przed nie istniejacymi zamówieniami
             throw new IllegalArgumentException("Error: Attempt to assign payment to a non-existent order.");
@@ -39,6 +40,7 @@ public class ReconciliationService {
     }
 
     // Algorytm księgowania wpłat
+    @Transactional
     public void processPayment(Long orderId, BankTransaction transaction){
 
         // 1. walidacja kwoty czy nie jest ujemna
@@ -56,6 +58,9 @@ public class ReconciliationService {
 
         // 5. Zapisujemy transakcje do bazy
         transactionRepository.save(transaction);
+
+        // 6. Aktualizujemy status płatności
+        order.setStatus(OrderStatus.PAID);
 
     }
 
