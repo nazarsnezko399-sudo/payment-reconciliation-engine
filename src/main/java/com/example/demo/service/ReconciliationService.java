@@ -8,6 +8,8 @@ import com.example.demo.repository.OrderRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+
 @Service
 public class ReconciliationService {
 
@@ -15,11 +17,13 @@ public class ReconciliationService {
     private final OrderRepository orderRepository;
     private final BankTransactionRepository transactionRepository;
     private final FinancialValidator financialValidator;
+    private final ReferenceMatcher referenceMatcher;
 
-    public ReconciliationService(OrderRepository orderRepository, BankTransactionRepository transactionRepository, FinancialValidator financialValidator) {
+    public ReconciliationService(OrderRepository orderRepository, BankTransactionRepository transactionRepository, FinancialValidator financialValidator, ReferenceMatcher referenceMatcher) {
         this.orderRepository = orderRepository;
         this.transactionRepository = transactionRepository;
         this.financialValidator = financialValidator;
+        this.referenceMatcher = referenceMatcher;
     }
 
     public Order getOrderDetails(long orderId) {
@@ -43,27 +47,34 @@ public class ReconciliationService {
 
     // Algorytm księgowania wpłat
     @Transactional
-    public void processPayment(Long orderId, BankTransaction transaction){
+    public String processPayment(BankTransaction transaction){
 
-        // 1. walidacja kwoty czy nie jest ujemna
+
+        // 1 Walidacja kwoty (Twoje zabezpieczenie - np. czy nie jest ujemna)
         financialValidator.validateAmount(transaction.getAmount());
 
-        // 2. Szukaninie zamówienia w bazie danych
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Error: Order with id " + orderId + " does not exist"));
+        // 2 Wyciągamy tytuł przelewu i szukamy w nim numeru zamówienia za pomocą Regex
+        String transactionTitle = transaction.getTransactionTitle();
+        String orderNumber = referenceMatcher.extractOrderNumber(transactionTitle)
+                .orElseThrow(() -> new IllegalArgumentException("Error: Cannot find order number in title: " + transactionTitle));
 
-        // 3. Sprawdzamy status zamówienia
+        // 3 Szukanie zamówienia w bazie po wyciągniętym numerze ORD... (zamiast po ID)
+        Order order = orderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new IllegalArgumentException("Error: Order with number " + orderNumber + " does not exist"));
+
+        // 4 Sprawdzamy status zamówienia
         validateOrderForPayment(order);
 
-        // 4. Jeśli wszystkie poprzednie kroki zostały wykonane przypisujemy zamówienie do transakcji
+        // 5 Przypisujemy zamówienie do transakcji (Klucz obcy dla bazy danych)
         transaction.setOrder(order);
 
-        // 5. Zapisujemy transakcje do bazy
+        // 6 Zapisujemy transakcję do bazy (Zostawiamy ślad audytowy)
         transactionRepository.save(transaction);
 
-        // 6. Aktualizujemy status płatności
+        // 7 Aktualizujemy status zamówienia na opłacone
         order.setStatus(OrderStatus.PAID);
 
+        return  orderNumber;
     }
 
 }

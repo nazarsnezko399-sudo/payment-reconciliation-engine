@@ -20,12 +20,11 @@ public class ReconciliationController {
 
     @PostMapping("/process")
     public ResponseEntity<String> processPayment(
-            @RequestParam Long orderId,
             @RequestBody BankTransaction transaction){
 
-        reconciliationService.processPayment(orderId, transaction);
+        String extractedOrderNumber = reconciliationService.processPayment(transaction);
 
-        return ResponseEntity.ok("Successfully processed payment. Order ID: " + orderId);
+        return ResponseEntity.ok("Successfully processed payment. Order ID: " + extractedOrderNumber);
 
 
     }
